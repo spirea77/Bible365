@@ -592,7 +592,7 @@ function LeaderDashboard({ theme }) {
 }
 
 // ─── 5분 기도 타이머 ──────────────────────────────────────────────────────────
-function PrayerTimer({ dateKey, passageRaw, theme, onComplete }) {
+function PrayerTimer({ dateKey, passageRaw, theme, onComplete, characterProps }) {
   const [elapsed, setElapsed] = useState(0);
   const [running, setRunning] = useState(false);
   const [done, setDone] = useState(false);
@@ -600,8 +600,7 @@ function PrayerTimer({ dateKey, passageRaw, theme, onComplete }) {
   const timerRef = useRef(null);
   const shareTextRef = useRef(null);
 
-  const shareText = `주님 사랑합니다.\n\n민수기 6:24-26\n"여호와는 네게 복을 주시고 너를 지키시기를 원하며 여호와는 그의 얼굴을 네게 비추사 은혜 베푸시기를 원하며 여호와는 그 얼굴을 네게로 향하여 드사 평강 주시기를 원하노라 할지니라 하라"\n\n "하나님께 시선을 두게 하소서."
-  \n 이미 승리했습니다!! 🙏`;
+  const shareText = `주님 사랑합니다.\n\n오늘의 성품: ${characterProps}\n\n이미 승리했습니다!! 🙏`;
 
   useEffect(() => { setElapsed(0); setRunning(false); setDone(false); }, [dateKey]);
 
@@ -709,7 +708,7 @@ function PrayerTimer({ dateKey, passageRaw, theme, onComplete }) {
 // ─── 메인 앱 ─────────────────────────────────────────────────────────────────
 export default function App() {
   const TODAY = today0();
-  const [user, setUser] = useState(undefined);
+  const [user, setUser] = useState({ uid: "guest_user", displayName: "방문자", photoURL: "" });
   const [viewDate, setViewDate] = useState(TODAY);
   const [devotional, setDevotional] = useState("");
   const [done, setDone] = useState(new Set());
@@ -724,16 +723,15 @@ export default function App() {
   const expanded = expand(raw);
   const d = DEVOTIONALS[key];
 
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (u) => {
-      setUser(u);
-      if (u) {
-        const { done: d2, voiceDone: v2 } = await loadUserCompletions(u.uid);
-        setDone(d2); setVoiceDone(v2);
-      }
-    });
-    return () => unsub();
-  }, []);
+ useEffect(() => {
+  async function initGuest() {
+    // guest_user ID로 저장된 기록이 있으면 불러옵니다.
+    const { done: d2, voiceDone: v2 } = await loadUserCompletions("guest_user");
+    setDone(d2); 
+    setVoiceDone(v2);
+  }
+  initGuest();
+}, []);
 
   useEffect(() => {
     if (isPersonal) { setDevotional("PERSONAL"); return; }
@@ -778,9 +776,6 @@ export default function App() {
   const nav = (delta) => { const next=addDays(viewDate,delta); if(R[dk(next)]!==undefined){setViewDate(next);setTab("main");} };
   const hasPrev = R[dk(addDays(viewDate,-1))]!==undefined;
   const hasNext = R[dk(addDays(viewDate,1))]!==undefined;
-
-  if (user === undefined) return <div style={{minHeight:"100vh",background:"#06091A"}}/>;
-  if (!user) return <LoginScreen />;
 
   const TABS = [["main","📖 묵상"],["voice","🙏 기도"],["calendar","📅 달력"],["leader","👑 현황판"]];
 
@@ -878,14 +873,20 @@ export default function App() {
               <div style={{textAlign:"center",marginBottom:20}}>
                 <div style={{fontSize:10,letterSpacing:".25em",color:theme.color+"77",textTransform:"uppercase",marginBottom:10}}>오늘의 말씀 선포 및 기도</div>
                 <div style={{background:"rgba(255,255,255,.02)",border:`1px solid ${theme.border}66`,borderRadius:14,padding:"18px",marginBottom:18}}>
-                  <div style={{fontSize:15,color:"#EDE5D5",lineHeight:1.85,fontWeight:500,marginBottom:10,textAlign:"center",wordBreak:"keep-all"}}>
-                    "여호와는 네게 복을 주시고 너를 지키시기를 원하며 여호와는 그의 얼굴을 네게 비추사 은혜 베푸시기를 원하며 여호와는 그 얼굴을 네게로 향하여 드사 평강 주시기를 원하노라 할지니라 하라"
+                 <div style={{fontSize:15,color:"#EDE5D5",lineHeight:1.85,fontWeight:500,marginBottom:10,textAlign:"center",wordBreak:"keep-all"}}>
+                  "{d?.성품 || "하나님께 시선을 두는 시간입니다."}"
                   </div>
-                  <div style={{fontSize:12,color:theme.color+"88",fontWeight:600}}>민수기 6:24-26</div>
-                  <div style={{fontSize:12,color:theme.color,marginTop:5}}>이 구절을 소리 내어 선포한 후 기도를 시작하세요.</div>
+                  <div style={{fontSize:12,color:theme.color+"88",fontWeight:600}}>오늘 묵상하는 {theme.name}의 성품</div>
+                  <div style={{fontSize:12,color:theme.color,marginTop:5}}>이 성품을 깊이 묵상하며 기도를 시작하세요.</div>
                 </div>
               </div>
-              <PrayerTimer dateKey={key} passageRaw={raw} theme={theme} onComplete={handlePrayerComplete}/>
+              <PrayerTimer 
+  dateKey={key} 
+  passageRaw={raw} 
+  theme={theme} 
+  onComplete={handlePrayerComplete} 
+  characterProps={d?.성품} 
+/>
             </div>
           </div>
         )}
